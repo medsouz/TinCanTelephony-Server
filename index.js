@@ -2,8 +2,8 @@ var net = require("net"),
 	packets = require("./packets.js"),
 	config = require("./config.js");
 
-function processBuffer(c, isNested){
-	for(x = 0; x < c.buffer.length; x++){//only parse packet if the end (\r\n) has been recieved
+function processBuffer(c, isNested) {
+	for(var x = 0; x < c.buffer.length; x++){//only parse packet if the end (\r\n) has been recieved
 		if(c.buffer[x] == 0x0D && x < c.buffer.length - 1 && c.buffer[x + 1] == 0x0A){
 			packets.parse(c, c.buffer);
 			c.buffer = c.buffer.slice(x + 2, c.buffer.length);//remove parsed stuff from buffer.
@@ -42,5 +42,5 @@ var server = net.createServer(function(c) { //'connection' listener
 	});
 });
 server.listen(config.port, config.host, function() {
-	console.log("TinCanTelephony Server started on port 9999");
+	console.log("TinCanTelephony Server started: " + config.host + ":" + config.port);
 });
