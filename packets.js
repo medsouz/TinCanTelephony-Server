@@ -44,10 +44,12 @@ Packets.parse = function(socket, data) {
 		Packets.sendDisconnect(socket, "Caused an error! :(");
 	}
 	console.log("Recieved Packet #"+packet.pID+" from "+socket.username+" ("+socket.remoteAddress+")");
+	if(config.verbose) {
+		console.log(packet);
+	}
 	switch(packet.pID){
 		case 0:
 			socket.username = packet.username;
-			console.log(packet);
 			mcauth.checkSessionId(packet.username, packet.sessionID, function(valid){
 				if(valid || config.NoAuth){
 					socket.isAuthed = true;
