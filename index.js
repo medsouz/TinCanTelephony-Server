@@ -1,3 +1,6 @@
+var sqlite3 = require('sqlite3').verbose();
+global.db = new sqlite3.Database('tct.db');
+
 var net = require("net"),
 	packets = require("./packets.js"),
 	config = require("./config.js");

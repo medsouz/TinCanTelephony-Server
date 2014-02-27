@@ -1,10 +1,14 @@
 var mcauth = require("mcauth"),
-	config = require("./config.js");
+	config = require("./config.js"),
+	users = require("./users.js"),
+	friends = require("./friends.js");
 
 var Packets = {};
 
 var PACKET_DATA = [
-	{username: "STRING", sessionID: "STRING"}//Packet 0: Login.
+	{username: "STRING", sessionID: "STRING"},//Packet 0: Login.
+	{message: "STRING"},//Packet 1: Disconnect
+	{friendName: "STRING"}//Packet 2: Add Friend
 ];
 
 Packets.sendDisconnect = function(socket, message) {
@@ -14,9 +18,9 @@ Packets.sendDisconnect = function(socket, message) {
 	buff.writeUInt32BE(buff.length, 4);
 	buff.writeUInt16BE(len, 8);
 	buff.write(message, 10, "utf8");
+	console.log("Disconnected "+socket.username+" ("+socket.remoteAddress+") for reason: "+message);
 	socket.write(buff);
 	socket.destroy();
-	console.log("Disconnected "+socket.username+" ("+socket.remoteAddress+") for reason: "+message);
 };
 
 Packets.parse = function(socket, data) {
@@ -30,7 +34,6 @@ Packets.parse = function(socket, data) {
 			if(PACKET_DATA[packet.pID][type] == "STRING"){
 				var strlen = data.readUInt16BE(off);
 				off += 2;
-				console.log(strlen);
 				packet[type] = data.toString('utf8', off, off + strlen);
 				off += strlen;
 			}
@@ -48,16 +51,25 @@ Packets.parse = function(socket, data) {
 		console.log(packet);
 	}
 	switch(packet.pID){
-		case 0:
+		case 0://Packet 0: Login
 			socket.username = packet.username;
-			mcauth.checkSessionId(packet.username, packet.sessionID, function(valid){
-				if(valid || config.NoAuth){
-					socket.isAuthed = true;
-					clearTimeout(socket.authTimeout);
-				}else{
-					Packets.sendDisconnect(socket, "Invalid login!");
+			mcauth.isNameValid(packet.username, function (nameValid) {
+				if(nameValid) {
+					mcauth.checkSessionId(packet.username, packet.sessionID, function (sessionValid) {
+						if(sessionValid || config.noAuth){
+							socket.isAuthed = true;
+							clearTimeout(socket.authTimeout);
+							users.login(socket);
+						}else{
+							Packets.sendDisconnect(socket, "Invalid login!");
+						}
+					});
+				} else {
+					Packets.sendDisconnect(socket, "Invalid username!");
 				}
 			});
+			break;
+		case 2://Packet 2: Add Friend
 			break;
 	}
 };
