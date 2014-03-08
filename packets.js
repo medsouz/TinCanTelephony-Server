@@ -8,18 +8,35 @@ var Packets = {};
 var PACKET_DATA = [
 	{username: "STRING", sessionID: "STRING"},//Packet 0: Login.
 	{message: "STRING"},//Packet 1: Disconnect
-	{friendName: "STRING"}//Packet 2: Add Friend
+	{friendName: "STRING", message: "STRING"},//Packet 2: Add Friend
+	{username: "STRING"}//Packet 3: Player Not Found
 ];
 
+Packets.sendPacket = function(socket, packetID, packet) {
+	var finalBuff = new Buffer(8),
+		dataBuff = new Buffer(0);
+	finalBuff.writeUInt32BE(packetID, 0);
+	for(var type in PACKET_DATA[packetID]) {
+		var buff = new Buffer(0);
+		if(PACKET_DATA[packetID][type] == "STRING"){
+			var value = packet[type],
+				len = Buffer.byteLength(value, "utf8");
+			buff = new Buffer(len + 2);
+			buff.writeUInt16BE(len, 0);
+			buff.write(value, 2, "utf8");
+		}
+		dataBuff = Buffer.concat([dataBuff, buff]);
+	}
+	finalBuff.writeUInt32BE(dataBuff.length, 4);
+	finalBuff = Buffer.concat([finalBuff, dataBuff]);
+	socket.write(finalBuff);
+};
+
 Packets.sendDisconnect = function(socket, message) {
-	var len = Buffer.byteLength(message, 'utf8'),
-		buff = new Buffer(len + 10);
-	buff.writeUInt32BE(1, 0);
-	buff.writeUInt32BE(buff.length, 4);
-	buff.writeUInt16BE(len, 8);
-	buff.write(message, 10, "utf8");
 	console.log("Disconnected "+socket.username+" ("+socket.remoteAddress+") for reason: "+message);
-	socket.write(buff);
+	var disconnect = {};
+	disconnect.message = message;
+	Packets.sendPacket(socket, 1, disconnect);
 	socket.destroy();
 };
 
@@ -50,27 +67,37 @@ Packets.parse = function(socket, data) {
 	if(config.verbose) {
 		console.log(packet);
 	}
-	switch(packet.pID){
-		case 0://Packet 0: Login
-			socket.username = packet.username;
-			mcauth.isNameValid(packet.username, function (nameValid) {
-				if(nameValid) {
-					mcauth.checkSessionId(packet.username, packet.sessionID, function (sessionValid) {
-						if(sessionValid || config.noAuth){
-							socket.isAuthed = true;
-							clearTimeout(socket.authTimeout);
-							users.login(socket);
-						}else{
-							Packets.sendDisconnect(socket, "Invalid login!");
-						}
-					});
-				} else {
-					Packets.sendDisconnect(socket, "Invalid username!");
-				}
-			});
-			break;
-		case 2://Packet 2: Add Friend
-			break;
+	if(!socket.isAuthed) {//Don't accept any packets until we know who this is
+		if(packet.pID === 0){//Packet 0: Login
+				socket.username = packet.username;
+				mcauth.isNameValid(packet.username, function (nameValid) {
+					if(nameValid) {
+						mcauth.checkSessionId(packet.username, packet.sessionID, function (sessionValid) {
+							if(sessionValid || config.noAuth){
+								socket.isAuthed = true;
+								clearTimeout(socket.authTimeout);
+								users.login(socket);
+							}else{
+								Packets.sendDisconnect(socket, "Invalid login!");
+							}
+						});
+					} else {
+						Packets.sendDisconnect(socket, "Invalid username!");
+					}
+				});
+		} else {
+			Packets.sendDisconnect(socket, "Tried to send packet before authorizing.");
+		}
+	} else {
+		switch(packet.pID){
+			case 2://Packet 2: Add Friend
+				friends.addFriend(socket, packet.friendName, packet.message, function (name) {
+					var notFound = {};
+					notFound.username = name;
+					Packets.sendPacket(socket, 3, notFound);
+				});
+				break;
+		}
 	}
 };
 
