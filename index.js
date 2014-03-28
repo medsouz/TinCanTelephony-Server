@@ -46,4 +46,7 @@ var server = net.createServer(function(c) { //'connection' listener
 });
 server.listen(config.port, config.host, function() {
 	console.log("TinCanTelephony Server started: " + config.host + ":" + config.port);
+	if(config.noAuth) {
+		console.log("WARNING: Authorization with Mojang's servers is disabled, this will allow users to pose as other players and should only be used for testing!");
+	}
 });

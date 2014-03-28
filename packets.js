@@ -1,7 +1,8 @@
 var mcauth = require("mcauth"),
 	config = require("./config.js"),
 	users = require("./users.js"),
-	friends = require("./friends.js");
+	friends = require("./friends.js"),
+	util = require('util');
 
 var Packets = {};
 
@@ -9,24 +10,40 @@ var PACKET_DATA = [
 	{username: "STRING", sessionID: "STRING"},//Packet 0: Login.
 	{message: "STRING"},//Packet 1: Disconnect
 	{friendName: "STRING", message: "STRING"},//Packet 2: Add Friend
-	{username: "STRING"}//Packet 3: Player Not Found
+	{username: "STRING"},//Packet 3: Player Not Found
+	{friends: [{name: "STRING", status: "STRING"}]}//Packet 4: Friend List
 ];
 
-Packets.sendPacket = function(socket, packetID, packet) {
-	var finalBuff = new Buffer(8),
-		dataBuff = new Buffer(0);
-	finalBuff.writeUInt32BE(packetID, 0);
-	for(var type in PACKET_DATA[packetID]) {
+function writeToBuffer(dataType, data) {
+	var dataBuff = new Buffer(0);
+	for(var type in dataType) {
 		var buff = new Buffer(0);
-		if(PACKET_DATA[packetID][type] == "STRING"){
-			var value = packet[type],
+		if(dataType[type] == "STRING"){
+			var value = data[type],
 				len = Buffer.byteLength(value, "utf8");
 			buff = new Buffer(len + 2);
 			buff.writeUInt16BE(len, 0);
 			buff.write(value, 2, "utf8");
+		} else if(dataType[type] == "INT"){
+			buff = new Buffer(4);
+			buff.writeUInt32BE(data[type], 0);
+		} else if(util.isArray(dataType[type])) {
+			buff = new Buffer(4);
+			buff.writeUInt32BE(data[type].length, 0);
+			for(var index = 0; index < data[type].length; index++) {
+				var arrBuff = writeToBuffer(dataType[type][0], data[type][index]);
+				buff = Buffer.concat([buff, arrBuff]);
+			}
 		}
 		dataBuff = Buffer.concat([dataBuff, buff]);
 	}
+	return dataBuff;
+}
+
+Packets.sendPacket = function(socket, packetID, packet) {
+	var finalBuff = new Buffer(8),
+		dataBuff = writeToBuffer(PACKET_DATA[packetID], packet);
+	finalBuff.writeUInt32BE(packetID, 0);
 	finalBuff.writeUInt32BE(dataBuff.length, 4);
 	finalBuff = Buffer.concat([finalBuff, dataBuff]);
 	socket.write(finalBuff);
@@ -53,8 +70,7 @@ Packets.parse = function(socket, data) {
 				off += 2;
 				packet[type] = data.toString('utf8', off, off + strlen);
 				off += strlen;
-			}
-			if(PACKET_DATA[packet.pID][type] == "INT"){
+			} else if(PACKET_DATA[packet.pID][type] == "INT"){
 				packet[type] = data.readInt32BE(off);
 				off += 4;
 			}
