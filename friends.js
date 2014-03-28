@@ -6,30 +6,22 @@ var users = require("./users.js"),
 
 var Friends = {};
 
-Friends.getFriendConnection = function (userA, userB, callback) {
-	users.getID(userA, function (idA) {
-		if(idA != -1) {
-			users.getID(userB, function (idB) {
-				if(idB != -1) {
-					db.get("SELECT *, (SELECT COUNT(*) FROM friends WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)) AS id FROM friends", idA, idB, function(err, row) {
-						if(!err) {
-							callback(row);
-						} else {
-							console.log(err);
-						}
-					});
-				}
-			});
+Friends.getFriendConnection = function (idA, idB, callback) {
+	db.get("SELECT *, (SELECT COUNT(*) FROM friends WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)) AS id FROM friends", idA, idB, function(err, row) {
+		if(!err) {
+			callback(row);
+		} else {
+			console.log(err);
 		}
 	});
 }
 
-Friends.addFriend = function(socket, friend, message, callback) {
+Friends.addFriend = function(socket, friend, message, callback) {//callback is called if the "friend" hasn't used TCT yet.
 	users.getID(socket.username, function (idA) {
 		if(idA != -1) {
 			users.getID(friend, function (idB) {
 				if(idB != -1) {
-					Friends.getFriendConnection(socket.username, friend, function (row) {//check to see if a friend request has already been sent to make this connection
+					Friends.getFriendConnection(idA, idB, function (row) {//check to see if a friend request has already been sent to make this connection
 						if(row) {//if a connection already exists...
 							if(idA == row.receiverID && idB == row.senderID){//The friend is accepting! If this is false then someone tried to resend a friend request
 								db.run("UPDATE friends SET accepted = ?3 WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)", idA, idB, 1);
@@ -41,7 +33,7 @@ Friends.addFriend = function(socket, friend, message, callback) {
 						}
 					});
 				} else {
-					console.log("Player " + friend + " not found in DB!");
+					console.log("Player " + friend + " not found in DB!");//by not allowing unregistered users to be stored as friends we will lower the amount of clutter from mispelled names in the database
 					callback(friend);
 				}
 			});
