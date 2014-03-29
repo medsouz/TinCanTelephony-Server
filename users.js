@@ -12,6 +12,9 @@ Users.login = function(socket) {
 			console.log(err);
 		}
 	});
+	Users.getID(socket.username, function(id){
+		socket.userID = id;
+	});
 }
 
 Users.getID = function(username, callback) {

@@ -11,7 +11,8 @@ var PACKET_DATA = [
 	{message: "STRING"},//Packet 1: Disconnect
 	{friendName: "STRING", message: "STRING"},//Packet 2: Add Friend
 	{username: "STRING"},//Packet 3: Player Not Found
-	{friends: [{name: "STRING", status: "STRING"}]}//Packet 4: Friend List
+	{friends: [{name: "STRING", status: "STRING"}]},//Packet 4: Friend List
+	{dataType: "STRING"}//Packet 5: Request Data
 ];
 
 function writeToBuffer(dataType, data) {
@@ -113,6 +114,12 @@ Packets.parse = function(socket, data) {
 					Packets.sendPacket(socket, 3, notFound);
 				});
 				break;
+			case 5:
+				if(packet.dataType == "FRIENDS") {
+					friends.getFriends(socket.userID, function(friendList){
+						Packets.sendPacket(socket, 4, friendList);
+					});
+				}
 		}
 	}
 };
