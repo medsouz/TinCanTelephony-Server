@@ -16,7 +16,7 @@
     "url": "https://github.com/medsouz/TinCanTelephony-Server/issues"
   },
   "dependencies": {
-    "mcauth": "~0.2.1",
+    "mcauth": "~0.2.2",
     "sqlite3": "~2.2.0",
     "moment": "~2.5.1"
   }

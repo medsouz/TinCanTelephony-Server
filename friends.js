@@ -7,7 +7,8 @@ var users = require("./users.js"),
 var Friends = {};
 
 Friends.getFriendConnection = function (idA, idB, callback) {
-	db.get("SELECT *, (SELECT COUNT(*) FROM friends WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)) AS id FROM friends", idA, idB, function(err, row) {
+	//db.get("SELECT *, (SELECT COUNT(*) FROM friends WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)) AS id FROM friends", idA, idB, function(err, row) {
+	db.get("SELECT * FROM friends WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)", idA, idB, function(err, row) {
 		if(!err) {
 			callback(row);
 		} else {
@@ -21,7 +22,7 @@ Friends.addFriend = function(socket, friend, message, callback) {//callback is c
 		if(idB != -1) {
 			Friends.getFriendConnection(socket.userID, idB, function (row) {//check to see if a friend request has already been sent to make this connection
 				if(row) {//if a connection already exists...
-					if(socket.userID == row.receiverID && idB == row.senderID){//The friend is accepting! If this is false then someone tried to resend a friend request
+					if(socket.userID == row.receiverID && idB == row.senderID) {//The friend is accepting! If this is false then someone tried to resend a friend request
 						db.run("UPDATE friends SET accepted = ?3 WHERE (senderID = ?1 AND receiverID = ?2) OR (senderID = ?2 AND receiverID = ?1)", socket.userID, idB, 1);
 					} else {
 						console.log(socket.username + " tried to accept a friend request he sent...");
@@ -46,6 +47,7 @@ Friends.getFriends = function(userID, callback) {
 		friendList.friends[index].name = row.username;
 		friendList.friends[index].status = "Debugging TCT";
 		index++;
+		users.refresh(row.uuid);
 	}, function(){ //called when completed
 		callback(friendList);
 	});
