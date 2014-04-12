@@ -1,28 +1,30 @@
 //Setup SQLite Table
-db.run("create table if not exists users(id INTEGER PRIMARY KEY, username TEXT, uuid TEXT, lastCheck DATETIME)");
+db.run("create table if not exists users(id INTEGER PRIMARY KEY, username TEXT, uuid TEXT, lastCheck DATETIME, invitePublic BOOLEAN, messagePublic BOOLEAN, serverPublic BOOLEAN)");
 
 var Users = {},
 	moment = require("moment"),
-	mcauth = require("mcauth"),
-	config = require("./config.js");
+	mcauth = require("mcauth");
 
 Users.login = function(socket) {
 	db.get("SELECT * FROM users WHERE username=?", socket.username, function(err, row) {
 		if(!row && !err) {//if the user isn't found and the code does not error...
 			console.log("User "+socket.username+" isn't in the database, checking information...");
 			mcauth.getMojangProfile(socket.username, function(profile) {
-				db.run("INSERT INTO users VALUES (NULL, ?, ?, ?)", socket.username, profile.profiles[0].id, moment().format("YY-MM-DD HH:mm:SS"));
-				console.log("Done! "+socket.username+" (UUID: "+profile.profiles[0].id+") has been registered");
-				Users.getID(socket.username, function(id){
-					socket.userID = id;
+				db.run("INSERT INTO users VALUES (NULL, ?, ?, ?, 1, 1, 1)", socket.username, profile.profiles[0].id, moment().format("YY-MM-DD HH:mm:SS"), function () {
+					if(this) {
+						socket.userID = this.lastID;
+						console.log("Done! "+socket.username+" (UUID: "+profile.profiles[0].id+") has been registered");
+						Users.getSettings(socket);
+					} else {
+						packets.sendDisconnect(socket, "Something went wrong registering the user!");
+					}
 				});
 			});
 		} else if(err) {
 			console.log(err);
 		} else {
-			Users.getID(socket.username, function(id){
-				socket.userID = id;
-			});
+			socket.userID = row.id;
+			Users.getSettings(socket);
 		}
 	});
 }
@@ -38,7 +40,6 @@ Users.getID = function(username, callback) {
 }
 
 Users.refresh = function(uuid) {
-	console.log("REFRESH "+uuid);
 	db.get("SELECT * FROM users WHERE uuid=?", uuid, function(err, row) {
 		if(row && !err) {
 			if(moment().unix() - moment(row.lastCheck, "YY-MM-DD HH:mm:SS").unix() > config.accountTTL) {
@@ -53,6 +54,22 @@ Users.refresh = function(uuid) {
 			console.log(err);
 		} else {
 			console.log("Something went horribly wrong! Tried to refresh UUID "+uuid+" and the entry was not found!");
+		}
+	});
+}
+
+Users.updateSettings = function(id, settings) {
+	db.run("UPDATE users SET invitePublic = ?, messagePublic = ?, serverPublic = ? WHERE id=?", settings.invitePublic, settings.messagePublic, settings.serverPublic, id);
+}
+
+Users.getSettings = function(socket) {
+	db.get("SELECT * FROM users WHERE id = ?", socket.userID, function(err, row) {
+		if(!err) {
+			var settings = {};
+			settings.serverPublic = row.serverPublic;
+			settings.messagePublic = row.messagePublic;
+			settings.invitePublic = row.invitePublic;
+			packets.sendPacket(socket, 6, settings);
 		}
 	});
 }

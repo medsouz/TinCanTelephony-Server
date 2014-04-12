@@ -1,9 +1,9 @@
 var sqlite3 = require('sqlite3').verbose();
 global.db = new sqlite3.Database('tct.db');
+global.packets = require("./packets.js");
+global.config = require("./config.js");
 
-var net = require("net"),
-	packets = require("./packets.js"),
-	config = require("./config.js");
+var net = require("net");
 
 function processBuffer(c, isNested) {
 	for(var x = 0; x < c.buffer.length; x++){//only parse packet if the end (\r\n) has been recieved

@@ -1,5 +1,4 @@
 var mcauth = require("mcauth"),
-	config = require("./config.js"),
 	users = require("./users.js"),
 	friends = require("./friends.js"),
 	util = require('util');
@@ -12,7 +11,8 @@ var PACKET_DATA = [
 	{friendName: "STRING", message: "STRING"},//Packet 2: Add Friend
 	{username: "STRING"},//Packet 3: Player Not Found
 	{friends: [{name: "STRING", status: "STRING"}]},//Packet 4: Friend List
-	{dataType: "STRING"}//Packet 5: Request Data
+	{dataType: "STRING"},//Packet 5: Request Data
+	{invitePublic: "BOOLEAN", messagePublic: "BOOLEAN", serverPublic: "BOOLEAN"}//Packet 6: Settings
 ];
 
 function writeToBuffer(dataType, data) {
@@ -28,6 +28,9 @@ function writeToBuffer(dataType, data) {
 		} else if(dataType[type] == "INT"){
 			buff = new Buffer(4);
 			buff.writeUInt32BE(data[type], 0);
+		} else if(dataType[type] == "BOOLEAN"){
+			buff = new Buffer(1);
+			buff[0] = (data[type]) ? 1 : 0;
 		} else if(util.isArray(dataType[type])) {
 			buff = new Buffer(4);
 			buff.writeUInt32BE(data[type].length, 0);
@@ -74,6 +77,9 @@ Packets.parse = function(socket, data) {
 			} else if(PACKET_DATA[packet.pID][type] == "INT"){
 				packet[type] = data.readInt32BE(off);
 				off += 4;
+			} else if(PACKET_DATA[packet.pID][type] == "BOOLEAN"){
+				packet[type] = (data[off] == 1) ? true : false;
+				off += 1;
 			}
 		}
 	} catch(err) {
@@ -120,6 +126,10 @@ Packets.parse = function(socket, data) {
 						Packets.sendPacket(socket, 4, friendList);
 					});
 				}
+				break;
+			case 6:
+				users.updateSettings(socket.userID, packet);
+				break;
 		}
 	}
 };
