@@ -10,15 +10,22 @@ Users.login = function(socket) {
 		if(!row && !err) {//if the user isn't found and the code does not error...
 			console.log("User "+socket.username+" isn't in the database, checking information...");
 			mcauth.getMojangProfile(socket.username, function(profile) {
-				db.run("INSERT INTO users VALUES (NULL, ?, ?, ?, 1, 1, 1)", socket.username, profile.profiles[0].id, moment().format("YY-MM-DD HH:mm:SS"), function () {
-					if(this) {
-						socket.userID = this.lastID;
-						console.log("Done! "+socket.username+" (UUID: "+profile.profiles[0].id+") has been registered");
-						Users.getSettings(socket);
-					} else {
-						packets.sendDisconnect(socket, "Something went wrong registering the user!");
-					}
-				});
+				console.log(profile);
+				var id;
+				if(profile.profiles[0]) {
+					db.run("INSERT INTO users VALUES (NULL, ?, ?, ?, 1, 1, 1)", socket.username, profile.profiles[0].id, moment().format("YY-MM-DD HH:mm:SS"), function () {
+						if(this) {
+							socket.userID = this.lastID;
+							console.log("Done! "+socket.username+" (UUID: "+profile.profiles[0].id+") has been registered");
+							Users.getSettings(socket);
+						} else {
+							packets.sendDisconnect(socket, "Something went wrong registering the user!");
+						}
+					});	
+				} else {
+					console.log("User "+socket.username+" does not exist in Mojang's database!");
+					packets.sendDisconnect(socket, "Username \""+socket.username+"\" not found in Mojang's database!");
+				}
 			});
 		} else if(err) {
 			console.log(err);

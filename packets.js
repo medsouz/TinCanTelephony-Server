@@ -6,7 +6,7 @@ var Packets = {};
 var PACKET_DATA = [
 	{username: "STRING", sessionID: "STRING"},//Packet 0: Login.
 	{message: "STRING"},//Packet 1: Disconnect
-	{friendName: "STRING", message: "STRING"},//Packet 2: Add Friend
+	{friendName: "STRING"},//Packet 2: Add Friend
 	{username: "STRING"},//Packet 3: Player Not Found
 	{friends: [{name: "STRING", status: "STRING"}]},//Packet 4: Friend List
 	{dataType: "STRING"},//Packet 5: Request Data
@@ -112,7 +112,7 @@ Packets.parse = function(socket, data) {
 	} else {
 		switch(packet.pID){
 			case 2://Packet 2: Add Friend
-				friends.addFriend(socket, packet.friendName, packet.message, function (name) {
+				friends.addFriend(socket, packet.friendName, socket.username + " would like to be your friend!", function (name) {
 					var notFound = {};
 					notFound.username = name;
 					Packets.sendPacket(socket, 3, notFound);
