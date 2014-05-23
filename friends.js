@@ -1,8 +1,7 @@
 //Setup SQLite Table
 db.run("create table if not exists friends(senderID INTEGER, receiverID INTEGER, message TEXT, accepted BOOLEAN, timestamp DATETIME)");
 
-var users = require("./users.js"),
-	moment = require("moment");
+var moment = require("moment");
 
 var Friends = {};
 

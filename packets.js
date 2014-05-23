@@ -1,6 +1,4 @@
 var mcauth = require("mcauth"),
-	users = require("./users.js"),
-	friends = require("./friends.js"),
 	util = require('util');
 
 var Packets = {};

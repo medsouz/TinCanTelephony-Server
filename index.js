@@ -2,6 +2,8 @@ var sqlite3 = require('sqlite3').verbose();
 global.db = new sqlite3.Database('tct.db');
 global.packets = require("./packets.js");
 global.config = require("./config.js");
+global.users = require("./users.js");
+global.friends = require("./friends.js");
 
 var net = require("net");
 
